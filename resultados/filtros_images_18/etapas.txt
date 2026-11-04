@@ -1,0 +1,54 @@
+Filtros passo a passo – images (18).jpg
+
+1. Aquisição (original)  (01_aquisicao_original.png)
+  A foto como foi capturada, reduzida para no máximo 1024 px para a análise ser rápida.
+  Resultado: 547 × 365 pixels
+
+2. Tons de cinza  (02_tons_de_cinza.png)
+  Luminância Y = 0,299·R + 0,587·G + 0,114·B. Os filtros de forma e borda usam um único canal.
+  Resultado: brilho médio: 129 de 255
+
+3. Equalização de histograma  (03_equalizacao_de_histograma.png)
+  Redistribui os tons para ocupar toda a faixa 0–255. Realça garrafas e sacolas em água turva ou escura.
+  Resultado: contraste (desvio dos tons): 55 → 74
+
+4. Filtro de mediana 5×5  (04_filtro_de_mediana_5_5.png)
+  Cada pixel vira a mediana dos 25 vizinhos. Remove reflexos e ruído pontual sem borrar as bordas.
+  Resultado: 69,9% dos pixels mudaram mais de 5 tons
+
+5. Filtro gaussiano 5×5  (05_filtro_gaussiano_5_5.png)
+  Média ponderada pelo núcleo 1-4-6-4-1 (separável). Suaviza a textura da água antes de medir bordas.
+  Resultado: desvio dos tons: 54,5 → 47,5
+
+6. Sobel (gradiente)  (06_sobel_gradiente.png)
+  Derivadas horizontal e vertical com os núcleos de Sobel. Quanto mais claro, mais forte a mudança de brilho.
+  Resultado: gradiente médio: 0,083
+
+7. Canny – contornos P&B  (07_canny_contornos_p_b.png)
+  Sobel + supressão de não-máximos + histerese: linhas finas que contornam os objetos (filtro P&B).
+  Resultado: 16,2% dos pixels são borda
+
+8. Limiarização de Otsu  (08_limiarizacao_de_otsu.png)
+  Escolhe sozinho o tom que melhor separa claros e escuros (máxima variância entre as classes).
+  Resultado: limiar automático: 127 de 255 · 51,9% claros
+
+9. Canal S do HSV (saturação)  (09_canal_s_do_hsv_saturacao.png)
+  Plástico transparente ou branco tem pouca saturação (escuro aqui); rótulos e tampas, muita (claro).
+  Resultado: saturação média: 46%
+
+10. Segmentação por faixas HSV  (10_segmentacao_por_faixas_hsv.png)
+  Regra fixa: claro e pouco saturado (PET, isopor) OU cor viva quente (rótulos, tampas).
+  Resultado: 15,9% da imagem marcada
+
+11. Morfologia: abertura + fechamento  (11_morfologia_abertura_fechamento.png)
+  Abertura apaga pontos soltos; fechamento fecha buracos e une partes do mesmo objeto (elemento 3×3).
+  Resultado: 15,9% → 10,6% da imagem
+
+12. Componentes conexos  (12_componentes_conexos.png)
+  Cada região ligada (vizinhança-8) vira um objeto candidato com sua caixa. O filtro não sabe o que é.
+  Resultado: 34 regiões com pelo menos 99 px
+
+13. Visão computacional (IA)  (13_visao_computacional_ia.png)
+  A rede neural treinada com as anotações dá a probabilidade de plástico em cada célula; as regiões acima do limiar viram detecções.
+  Resultado: 9 região(ões) · 9,7% da imagem com plástico (limiar 85%)
+
