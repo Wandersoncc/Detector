@@ -1,0 +1,7 @@
+# Dependências do Detector de Plástico (versão Python)
+# PDI e Visão Computacional com Pillow + NumPy.
+pillow>=10.0
+numpy>=1.24
+
+# Opcional: acelera os componentes conexos (há um fallback em Python puro se faltar).
+scipy>=1.10

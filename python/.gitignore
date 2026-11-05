@@ -1,0 +1,7 @@
+# Ambiente virtual criado pelo INICIAR.sh (não versionar)
+.venv/
+
+# Caches do Python
+__pycache__/
+*.pyc
+*.pyo
