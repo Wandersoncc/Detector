@@ -1,7 +1,6 @@
-"""Detector de plástico em corpos d'água — versão Python (Pillow + NumPy).
+"""Detector de plástico em corpos d'água — 100% Python (Pillow + NumPy).
 
-Porte da aplicação Java original para Python, mantendo o mesmo pipeline de
-Processamento Digital de Imagens (PDI) e Visão Computacional:
+Pipeline de Processamento Digital de Imagens (PDI) e Visão Computacional:
 
     PDI (filtros clássicos) -> descritores -> rede neural -> detecção de regiões
 

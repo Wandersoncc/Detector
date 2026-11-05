@@ -50,8 +50,8 @@ class Projeto:
         p = os.environ.get("DETECTOR_PROJETO")
         if p:
             return Path(p)
-        # por padrão, a raiz do repositório (pai da pasta python/)
-        return Path(__file__).resolve().parents[2]
+        # por padrão, a raiz do projeto (pai do pacote detector_plastico/)
+        return Path(__file__).resolve().parents[1]
 
     @staticmethod
     def eh_imagem(nome: str) -> bool:
@@ -127,11 +127,10 @@ class Projeto:
         return self.pasta_modelos / "modelo_plastico.npz"
 
     def arquivo_historico(self) -> Path:
-        # nome próprio da versão Python, para não sobrescrever o CSV da versão Java
-        return self.pasta_modelos / "historico_eficiencia_py.csv"
+        return self.pasta_modelos / "historico_eficiencia.csv"
 
     def arquivo_desempenho(self) -> Path:
-        return self.pasta_modelos / "desempenho_por_imagem_py.csv"
+        return self.pasta_modelos / "desempenho_por_imagem.csv"
 
     def arquivo_importadas(self) -> Path:
         return self.pasta_imagens.parent / "importadas_de_datasets.txt"
