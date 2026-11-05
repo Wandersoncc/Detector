@@ -58,14 +58,23 @@ class App:
         self._pintando = False
         self._retang_ini = None
 
+        self._ocupado = False
+
         self._montar()
         self._carregar_modelo()
         self._recarregar_lista()
         root.bind("<Control-s>", lambda e: self.salvar())
-        root.bind("b", lambda e: self.ferramenta.set("plastico"))
-        root.bind("w", lambda e: self.ferramenta.set("varinha"))
-        root.bind("r", lambda e: self.ferramenta.set("retangulo"))
-        root.bind("i", lambda e: self.ferramenta.set("ignorar"))
+        root.bind("b", lambda e: self._set_ferramenta("plastico"))
+        root.bind("w", lambda e: self._set_ferramenta("varinha"))
+        root.bind("r", lambda e: self._set_ferramenta("retangulo"))
+        root.bind("i", lambda e: self._set_ferramenta("ignorar"))
+        root.bind("<Next>", lambda e: self.navegar(+1))      # Page Down
+        root.bind("<Prior>", lambda e: self.navegar(-1))     # Page Up
+        root.bind("<Control-n>", lambda e: self.proxima_nao_anotada())
+
+    def _set_ferramenta(self, valor):
+        self.ferramenta.set(valor)
+        self._atualizar_status()
 
     # ---------------------------------------------------------------- layout
 
@@ -83,19 +92,37 @@ class App:
         ttk.Checkbutton(barra, text="Sobrepor detecção da IA", variable=self.mostrar_ia,
                         command=self._redesenhar).pack(side=tk.LEFT, padx=10)
 
+        # barra de progresso (aparece durante treino/detecção)
+        self.progresso = ttk.Progressbar(barra, mode="indeterminate", length=160)
+        # fica escondida até ser necessária
+        self._botoes_acao = [w for w in barra.winfo_children() if isinstance(w, ttk.Button)]
+
         corpo = ttk.Frame(self.root)
         corpo.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
         # lista de imagens
         esq = ttk.Frame(corpo, padding=4)
         esq.pack(side=tk.LEFT, fill=tk.Y)
-        ttk.Label(esq, text="Imagens").pack(anchor=tk.W)
-        self.lista = tk.Listbox(esq, width=34, activestyle="dotbox")
-        self.lista.pack(side=tk.LEFT, fill=tk.Y, expand=True)
-        sb = ttk.Scrollbar(esq, orient=tk.VERTICAL, command=self.lista.yview)
+        self.lbl_imagens = ttk.Label(esq, text="Imagens")
+        self.lbl_imagens.pack(anchor=tk.W)
+
+        nav = ttk.Frame(esq)
+        nav.pack(fill=tk.X, pady=2)
+        ttk.Button(nav, text="◀ Anterior", width=11,
+                   command=lambda: self.navegar(-1)).pack(side=tk.LEFT)
+        ttk.Button(nav, text="Próxima ▶", width=11,
+                   command=lambda: self.navegar(+1)).pack(side=tk.LEFT)
+
+        linha_lista = ttk.Frame(esq)
+        linha_lista.pack(fill=tk.BOTH, expand=True)
+        self.lista = tk.Listbox(linha_lista, width=34, activestyle="dotbox")
+        self.lista.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        sb = ttk.Scrollbar(linha_lista, orient=tk.VERTICAL, command=self.lista.yview)
         sb.pack(side=tk.LEFT, fill=tk.Y)
         self.lista.config(yscrollcommand=sb.set)
         self.lista.bind("<<ListboxSelect>>", self._selecionar)
+        ttk.Button(esq, text="Próxima não anotada (Ctrl+N)",
+                   command=self.proxima_nao_anotada).pack(fill=tk.X, pady=2)
 
         # canvas central
         centro = ttk.Frame(corpo)
@@ -138,12 +165,17 @@ class App:
         self.lbl_modelo = ttk.Label(dir_, text="", justify=tk.LEFT, wraplength=220)
         self.lbl_modelo.pack(anchor=tk.W)
 
+        # status bar
+        self.status = ttk.Label(self.root, relief=tk.SUNKEN, anchor=tk.W, padding=(6, 2))
+        self.status.pack(side=tk.BOTTOM, fill=tk.X)
+
         # log inferior
         inf = ttk.Frame(self.root, padding=4)
         inf.pack(side=tk.BOTTOM, fill=tk.X)
         self.log_txt = tk.Text(inf, height=6, wrap=tk.WORD, bg="#111", fg="#ddd")
         self.log_txt.pack(fill=tk.X)
         self.log("Pronto. Selecione uma imagem e comece a anotar. Pressione B/W/R/I para trocar a ferramenta.")
+        self._atualizar_status()
 
     # ------------------------------------------------------------------ util
 
@@ -179,11 +211,48 @@ class App:
     def _recarregar_lista(self):
         self.imagens = self.projeto.listar_imagens()
         self.lista.delete(0, tk.END)
+        n_anot = 0
         for f in self.imagens:
-            marca = "● " if self.projeto.anotada(f) else "   "
-            self.lista.insert(tk.END, marca + f.name)
-        self.log(f"{len(self.imagens)} imagem(ns); "
-                 f"{len(self.projeto.imagens_anotadas())} anotada(s).")
+            anot = self.projeto.anotada(f)
+            n_anot += anot
+            self.lista.insert(tk.END, ("● " if anot else "   ") + f.name)
+        self.lbl_imagens.config(text=f"Imagens — {n_anot}/{len(self.imagens)} anotadas")
+        self.log(f"{len(self.imagens)} imagem(ns); {n_anot} anotada(s).")
+
+    # --------------------------------------------------------- navegação
+
+    def navegar(self, passo):
+        if not self.imagens:
+            return
+        novo = (self.indice if self.indice >= 0 else 0) + passo
+        novo = max(0, min(len(self.imagens) - 1, novo))
+        self.lista.selection_clear(0, tk.END)
+        self.lista.selection_set(novo)
+        self.lista.see(novo)
+        self._abrir(novo)
+
+    def proxima_nao_anotada(self):
+        if not self.imagens:
+            return
+        inicio = self.indice + 1 if self.indice >= 0 else 0
+        for off in range(len(self.imagens)):
+            i = (inicio + off) % len(self.imagens)
+            if not self.projeto.anotada(self.imagens[i]):
+                self.lista.selection_clear(0, tk.END)
+                self.lista.selection_set(i)
+                self.lista.see(i)
+                self._abrir(i)
+                return
+        self.log("Todas as imagens já estão anotadas. 🎉")
+
+    def _atualizar_status(self):
+        rotulos = {"plastico": "Plástico (pincel)", "ignorar": "Ignorar",
+                   "varinha": "Varinha", "retangulo": "Retângulo"}
+        ferr = rotulos.get(self.ferramenta.get(), self.ferramenta.get())
+        atual = ""
+        if 0 <= self.indice < len(self.imagens):
+            atual = f"  |  Imagem {self.indice + 1}/{len(self.imagens)}: {self.imagens[self.indice].name}"
+        self.status.config(text=f"Ferramenta: {ferr}{atual}")
 
     # ------------------------------------------------------------- seleção
 
@@ -208,6 +277,7 @@ class App:
         m = self.projeto.carregar_mascara(f, w, h)
         self.mascara = m if m is not None else np.zeros((h, w), dtype=np.uint8)
         self._redesenhar()
+        self._atualizar_status()
 
     # ----------------------------------------------------------- desenho
 
@@ -460,13 +530,36 @@ class App:
 
     # --------------------------------------------------------------- threads
 
+    def _ocupar(self, ligado):
+        """Mostra/esconde a barra de progresso e habilita/desabilita os botões de ação."""
+        self._ocupado = ligado
+        estado = tk.DISABLED if ligado else tk.NORMAL
+        for b in getattr(self, "_botoes_acao", []):
+            try:
+                b.config(state=estado)
+            except Exception:  # noqa: BLE001
+                pass
+        if ligado:
+            self.progresso.pack(side=tk.LEFT, padx=10)
+            self.progresso.start(12)
+        else:
+            self.progresso.stop()
+            self.progresso.pack_forget()
+
     def _em_thread(self, fn):
+        if self._ocupado:
+            self.log("Aguarde a operação atual terminar.")
+            return
+        self._ocupar(True)
+
         def alvo():
             try:
                 fn()
             except Exception as e:  # noqa: BLE001
                 self.log("ERRO: " + str(e))
                 self.log(traceback.format_exc())
+            finally:
+                self.root.after(0, lambda: self._ocupar(False))
         threading.Thread(target=alvo, daemon=True).start()
 
 

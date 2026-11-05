@@ -1,26 +1,24 @@
-# Detector de Plástico em Rios — versão Python (PDI + Visão Computacional)
+# Detector de Plástico em Rios — 100% Python (PDI + Visão Computacional)
 
-Porte para **Python** do detector de plástico em corpos d'água, mantendo o mesmo
-pipeline do projeto Java original, mas com **Pillow + NumPy** no Processamento
-Digital de Imagens (PDI):
+Aplicação **desktop** que **aprende com exemplos** a reconhecer plástico (garrafas
+PET, sacolas, isopor, embalagens) em rios poluídos, mangues, praias e nascentes.
+Você pinta de verde o que é plástico, a rede neural treina com essas anotações e
+passa a marcar plástico em imagens novas — quanto mais imagens, melhor ela fica.
+
+Tudo em Python, com **Pillow + NumPy** no Processamento Digital de Imagens:
 
 ```
 PDI (filtros clássicos)  ->  descritores  ->  rede neural  ->  detecção de regiões
 ```
 
-O sistema **aprende com exemplos**: você pinta de verde o que é plástico, a rede
-neural treina com essas anotações e passa a marcar plástico em imagens novas.
-Ele junta os filtros clássicos (HSV e contornos P&B) com uma rede neural treinada
-pelas imagens que você anota — quanto mais imagens, melhor ela fica.
-
-As imagens, anotações e resultados ficam na **raiz do projeto** (`dados/`,
-`modelos/`, `resultados/`), **compartilhados com a versão Java**.
+A interface é em **Tkinter** (desktop, roda no seu PC — não é web). Os filtros e a
+rede neural são escritos do zero, sem OpenCV nem frameworks de deep learning.
 
 ---
 
 ## Como rodar (Linux Mint / Ubuntu)
 
-Abra um terminal nesta pasta (`python/`) e execute:
+Abra um terminal **nesta pasta** e execute:
 
 ```sh
 sh INICIAR.sh
@@ -44,16 +42,12 @@ sudo apt update && sudo apt install python3 python3-venv python3-pip python3-tk
 ./INICIAR.sh                      # abre a janela
 ./INICIAR.sh testar               # confere se tudo funciona
 ./INICIAR.sh treinar              # treina a IA com as imagens anotadas
-./INICIAR.sh detectar <pasta>     # detecta plástico numa pasta (gera imagens + relatorio.csv)
-./INICIAR.sh filtros <imagem>     # salva as 12/13 etapas do PDI em PNG
+./INICIAR.sh detectar <pasta>     # detecta plástico numa pasta (imagens + relatorio.csv)
+./INICIAR.sh filtros <imagem>     # salva as etapas do PDI em PNG
 ./INICIAR.sh importar <arquivos>  # importa imagens soltas, pastas ou .zip
 ```
 
-Também funciona sem o script, com o ambiente ativado:
-
-```sh
-python -m detector_plastico testar
-```
+Também funciona sem o script (com o `.venv` ativado): `python -m detector_plastico testar`.
 
 ---
 
@@ -72,8 +66,7 @@ python -m detector_plastico testar
 3. **Treinar IA**: mede a **eficiência (F1)** com validação cruzada — cada imagem
    é testada por um modelo que **não a viu** no treino — e compara com o filtro
    HSV clássico nas mesmas imagens.
-4. **Pré-anotar com a IA**: a IA pinta sozinha; você só corrige e salva. Acelera
-   muito a anotação.
+4. **Pré-anotar com a IA**: a IA pinta sozinha; você só corrige e salva.
 5. **Detectar em lote**: analisa uma pasta inteira e gera, em
    `resultados/lote_<data>/`, as imagens marcadas (`*_ia.jpg`) e um
    `relatorio.csv` (tem plástico?, quantas regiões, % da imagem, confiança).
@@ -87,8 +80,7 @@ python -m detector_plastico testar
 
 ## Como funciona
 
-**Processamento digital de imagens** (todos os filtros escritos com Pillow +
-NumPy, sem OpenCV):
+**Processamento digital de imagens** (filtros escritos com Pillow + NumPy, sem OpenCV):
 
 - *Realce*: equalização de histograma.
 - *Suavização*: filtro de mediana 5×5 e gaussiano 5×5 (separável, núcleo 1-4-6-4-1).
@@ -121,45 +113,43 @@ NumPy, sem OpenCV):
 **limiar** é escolhido automaticamente para maximizar o F1 e pode ser ajustado
 no controle deslizante da janela.
 
+O modelo que acompanha o projeto (`modelos/modelo_plastico.npz`) foi treinado com
+as 424 imagens anotadas e atinge **F1 ≈ 38%** na validação cruzada (≈ 46% só nas
+imagens próprias), contra ≈ 2% do filtro HSV clássico.
+
 ---
 
 ## Pastas
 
 ```
-python/
-  INICIAR.sh                iniciador para Linux Mint (cria o .venv e roda)
-  requirements.txt          dependências (Pillow, NumPy, SciPy)
-  detector_plastico/
-    filtros.py              filtros de PDI (cinza, HSV, Sobel, Canny, Otsu, morfologia, varinha)
-    descritores.py          descritor de 163 números (cor, forma/HOG, textura/LBP)
-    rede_neural.py          a rede neural escrita do zero (NumPy)
-    modelo.py               normalização + rede + limiar (salvar/carregar .npz)
-    treino.py               treino, aumento de dados, validação cruzada
-    detector.py             aplica o modelo e localiza as regiões
-    lote.py                 detecção em lote (imagens marcadas + relatorio.csv)
-    etapas.py               os filtros passo a passo, com explicação e números
-    projeto.py              imagens, máscaras de anotação, importação
-    metricas.py             precisão, revocação, F1, IoU
-    autoteste.py            o "está tudo OK?"
-    gui.py                  a interface (Tkinter)
-    cli.py                  a linha de comando
-
-(na raiz do projeto, compartilhado com a versão Java)
-  dados/imagens/      as imagens
-  dados/anotacoes/    máscaras PNG (branco = plástico, cinza = ignorar, preto = fundo)
-  modelos/            modelo treinado (modelo_plastico.npz) e CSVs de eficiência
-  resultados/         detecção em lote e filtros passo a passo
+INICIAR.sh                iniciador para Linux Mint (cria o .venv e roda)
+requirements.txt          dependências (Pillow, NumPy, SciPy)
+detector_plastico/
+  filtros.py              filtros de PDI (cinza, HSV, Sobel, Canny, Otsu, morfologia, varinha)
+  descritores.py          descritor de 163 números (cor, forma/HOG, textura/LBP)
+  rede_neural.py          a rede neural escrita do zero (NumPy)
+  modelo.py               normalização + rede + limiar (salvar/carregar .npz)
+  treino.py               treino, aumento de dados, validação cruzada
+  detector.py             aplica o modelo e localiza as regiões
+  lote.py                 detecção em lote (imagens marcadas + relatorio.csv)
+  etapas.py               os filtros passo a passo, com explicação e números
+  projeto.py              imagens, máscaras de anotação, importação
+  metricas.py             precisão, revocação, F1, IoU
+  autoteste.py            o "está tudo OK?"
+  gui.py                  a interface (Tkinter)
+  cli.py                  a linha de comando
+dados/imagens/            as imagens
+dados/anotacoes/          máscaras PNG (branco = plástico, cinza = ignorar, preto = fundo)
+modelos/                  modelo treinado (modelo_plastico.npz) e CSVs de eficiência
+resultados/               detecção em lote e filtros passo a passo
 ```
 
-## Diferenças em relação à versão Java
+## Requisitos
 
-- PDI com **Pillow + NumPy** (vetorizado) em vez dos laços manuais em Java.
-- A rede neural é a mesma arquitetura (163→64→32→1), treinada por **mini-lote**
-  vetorizado — mais rápida, mesma matemática (Adam, dropout, weight decay).
-- Modelo salvo em **`.npz`** (NumPy), não no binário próprio do Java.
-- Os componentes conexos usam SciPy quando disponível, com **fallback** em Python
-  puro se o SciPy não estiver instalado.
-- As anotações (`dados/anotacoes/*.png`) são **as mesmas** das duas versões.
+- Python 3.10 ou mais novo
+- Pillow, NumPy (e SciPy, opcional — acelera os componentes conexos; há fallback
+  em Python puro se faltar)
+- Para a janela: tkinter (`python3-tk`)
 
 ## Créditos (citar na bibliografia)
 
